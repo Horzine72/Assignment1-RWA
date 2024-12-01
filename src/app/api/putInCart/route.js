@@ -1,52 +1,46 @@
-export async function GET(req, res) {
+import { NextResponse } from 'next/server';
+import clientPromise from '../../../lib/mongodb';
+import { getIronSession } from 'iron-session';
+import { cookies } from 'next/headers';
 
-  // Make a note we are on
+export async function POST(req) {
+  try {
+    const { pname, quantity } = await req.json();
 
-  // the api. This goes to the console.
+    const cookieHeaders = await cookies();
+    const session = await getIronSession(cookieHeaders, {
+      password: process.env.SESSION_PASSWORD,
+      cookieName: 'app',
+    });
 
-  console.log("in the putInCart api page")
+    const userId = session.userId;
+    if (!userId) {
+      return NextResponse.json({ error: "User not authenticated" }, { status: 401 });
+    }
 
-  // get the values
+    console.log("Product name:", pname, "User ID:", userId);
 
-  // that were sent across to us.
+    const client = await clientPromise;
+    const db = client.db('app'); // Database name
+    const collection = db.collection('shopping_cart'); // Collection name
 
-  const { searchParams } = new URL(req.url)
+    let cart = await collection.findOne({ userId });
+    if (!cart) {
+      cart = { userId, items: [] };
+    }
 
-  const pname = searchParams.get('pname')
+    const itemIndex = cart.items.findIndex(item => item.pname === pname);
+    if (itemIndex > -1) {
+      cart.items[itemIndex].quantity += quantity;
+    } else {
+      cart.items.push({ pname, quantity });
+    }
 
-  console.log(pname);
+    await collection.updateOne({ userId }, { $set: { items: cart.items } }, { upsert: true });
 
- // =================================================
-
-  const { MongoClient } = require('mongodb');
-
-  const url = 'mongodb://root:example@localhost:27017/';
-
-  const client = new MongoClient(url);
-
-
-
-
-
-  const dbName = 'app'; // database name
-
-  await client.connect();
-
-  console.log('Connected successfully to server');
-
-  const db = client.db(dbName);
-
-  const collection = db.collection('shopping_cart'); // collection name
-
-  var myobj = { pname: pname, username: "sample@test.com"};
-
-  const insertResult = await collection.insertOne(myobj);
-
- //==========================================================
-
-  // at the end of the process we need to send something back.
-
-  return Response.json({ "data":"" + "inserted" + ""})
-
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error adding item to cart:', error);
+    return NextResponse.json({ error: 'Error adding item to cart', message: error.message }, { status: 500 });
+  }
 }
-

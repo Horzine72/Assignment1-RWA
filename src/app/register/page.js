@@ -55,7 +55,7 @@ export default function Register() {
                     }}
                 >
                     <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-                        {/* Add an icon here if needed */}
+                        {}
                     </Avatar>
                     <Typography component="h1" variant="h5">
                         Sign up

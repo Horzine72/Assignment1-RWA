@@ -16,40 +16,28 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
-    console.log("handling submit");
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setLoading(true);
-
-    event.preventDefault();
 
     const data = new FormData(event.currentTarget);
     let email = data.get('email');
     let pass = data.get('pass');
 
-    console.log("Sent email:" + email);
-    console.log("Sent pass:" + pass);
-
-    runDBCallAsync(`http://localhost:3000/api/login?email=${email}&pass=${pass}`);
-  };
-
-  async function runDBCallAsync(url) {
     try {
-      const res = await fetch(url);
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password: pass }),
+      });
 
-      // Log response status and text for debugging
-      console.log("Response status:", res.status);
-      const responseText = await res.text();
-      console.log("Response text:", responseText);
-
-      // Attempt to parse the response as JSON
-      const data = JSON.parse(responseText);
-      console.log("Parsed response data:", data);
-
+      const data = await res.json();
       setLoading(false);
 
       if (data.data === "true") {
-        console.log("login is valid!");
         if (data.role === "manager") {
           window.location.href = "/manager";
         } else if (data.role === "customer") {
@@ -57,17 +45,14 @@ export default function Home() {
         }
       } else if (data.data === "error") {
         setError('Something went wrong. Please try again.');
-        console.log("Error message:", data.message);
       } else {
         setError('Invalid email or password');
-        console.log("not valid");
       }
     } catch (err) {
       setLoading(false);
       setError('Something went wrong. Please try again.');
-      console.error("Catch block error:", err);
     }
-  }
+  };
 
   return (
     <Container maxWidth="sm">
